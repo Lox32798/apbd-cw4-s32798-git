@@ -4,6 +4,13 @@ namespace LegacyRenewalApp
 {
     public class SubscriptionRenewalService
     {
+        private readonly ICustomerRepository _customerRepository;
+        private readonly ISubscriptionPlanRepository _subscriptionPlanRepository;
+        public SubscriptionRenewalService()
+        {
+            _customerRepository =  new CustomerRepository();
+            _subscriptionPlanRepository = new SubscriptionPlanRepository();
+        }
         public RenewalInvoice CreateRenewalInvoice(
             int customerId,
             string planCode,
@@ -12,34 +19,13 @@ namespace LegacyRenewalApp
             bool includePremiumSupport,
             bool useLoyaltyPoints)
         {
-            if (customerId <= 0)
-            {
-                throw new ArgumentException("Customer id must be positive");
-            }
-
-            if (string.IsNullOrWhiteSpace(planCode))
-            {
-                throw new ArgumentException("Plan code is required");
-            }
-
-            if (seatCount <= 0)
-            {
-                throw new ArgumentException("Seat count must be positive");
-            }
-
-            if (string.IsNullOrWhiteSpace(paymentMethod))
-            {
-                throw new ArgumentException("Payment method is required");
-            }
-
+            ValidateData(customerId, planCode, seatCount, paymentMethod);
+            
             string normalizedPlanCode = planCode.Trim().ToUpperInvariant();
             string normalizedPaymentMethod = paymentMethod.Trim().ToUpperInvariant();
-
-            var customerRepository = new CustomerRepository();
-            var planRepository = new SubscriptionPlanRepository();
-
-            var customer = customerRepository.GetById(customerId);
-            var plan = planRepository.GetByCode(normalizedPlanCode);
+            
+            var customer = _customerRepository.GetById(customerId);
+            var plan = _subscriptionPlanRepository.GetByCode(normalizedPlanCode);
 
             if (!customer.IsActive)
             {
@@ -47,71 +33,21 @@ namespace LegacyRenewalApp
             }
 
             decimal baseAmount = (plan.MonthlyPricePerSeat * seatCount * 12m) + plan.SetupFee;
-            decimal discountAmount = 0m;
+
             string notes = string.Empty;
+            decimal discountAmount = 0m;
+            
+            var ultimateDiscountCalc = new UltimateDiscountCalculator(customer, plan, seatCount, useLoyaltyPoints);
+            var discountRes = ultimateDiscountCalc.CalculateDiscount(baseAmount);
+            
+            discountAmount += discountRes.Amount;
+            notes += discountRes.Note;
 
-            if (customer.Segment == "Silver")
-            {
-                discountAmount += baseAmount * 0.05m;
-                notes += "silver discount; ";
-            }
-            else if (customer.Segment == "Gold")
-            {
-                discountAmount += baseAmount * 0.10m;
-                notes += "gold discount; ";
-            }
-            else if (customer.Segment == "Platinum")
-            {
-                discountAmount += baseAmount * 0.15m;
-                notes += "platinum discount; ";
-            }
-            else if (customer.Segment == "Education" && plan.IsEducationEligible)
-            {
-                discountAmount += baseAmount * 0.20m;
-                notes += "education discount; ";
-            }
-
-            if (customer.YearsWithCompany >= 5)
-            {
-                discountAmount += baseAmount * 0.07m;
-                notes += "long-term loyalty discount; ";
-            }
-            else if (customer.YearsWithCompany >= 2)
-            {
-                discountAmount += baseAmount * 0.03m;
-                notes += "basic loyalty discount; ";
-            }
-
-            if (seatCount >= 50)
-            {
-                discountAmount += baseAmount * 0.12m;
-                notes += "large team discount; ";
-            }
-            else if (seatCount >= 20)
-            {
-                discountAmount += baseAmount * 0.08m;
-                notes += "medium team discount; ";
-            }
-            else if (seatCount >= 10)
-            {
-                discountAmount += baseAmount * 0.04m;
-                notes += "small team discount; ";
-            }
-
-            if (useLoyaltyPoints && customer.LoyaltyPoints > 0)
-            {
-                int pointsToUse = customer.LoyaltyPoints > 200 ? 200 : customer.LoyaltyPoints;
-                discountAmount += pointsToUse;
-                notes += $"loyalty points used: {pointsToUse}; ";
-            }
-
-            decimal subtotalAfterDiscount = baseAmount - discountAmount;
-            if (subtotalAfterDiscount < 300m)
-            {
-                subtotalAfterDiscount = 300m;
-                notes += "minimum discounted subtotal applied; ";
-            }
-
+            var sabtotalCalc = new SubtotalCulculator();
+            var sabTotalRes = sabtotalCalc.CalculateSubTotal(baseAmount, discountAmount);
+            decimal subtotalAfterDiscount = sabTotalRes.Amount;
+            notes += sabTotalRes.Note;
+                
             decimal supportFee = 0m;
             if (includePremiumSupport)
             {
@@ -215,6 +151,32 @@ namespace LegacyRenewalApp
             }
 
             return invoice;
+        }
+
+        private void ValidateData(
+            int customerId,
+            string planCode,
+            int seatCount,
+            string paymentMethod){
+            if (customerId <= 0)
+            {
+                throw new ArgumentException("Customer id must be positive");
+            }
+
+            if (string.IsNullOrWhiteSpace(planCode))
+            {
+                throw new ArgumentException("Plan code is required");
+            }
+
+            if (seatCount <= 0)
+            {
+                throw new ArgumentException("Seat count must be positive");
+            }
+
+            if (string.IsNullOrWhiteSpace(paymentMethod))
+            {
+                throw new ArgumentException("Payment method is required");
+            }
         }
     }
 }
