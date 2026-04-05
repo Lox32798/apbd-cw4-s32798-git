@@ -2,7 +2,7 @@
 
 namespace LegacyRenewalApp;
 
-public class SubtotalCulculator
+public class SubtotalCulculator : ISubtotalCalculator
 {
     public BasicResult CalculateSubTotal(decimal amount, decimal discount)
     {
@@ -15,4 +15,9 @@ public class SubtotalCulculator
         }
         return new BasicResult(subtotalAfterDiscount, notes);
     }
+}
+
+public interface ISubtotalCalculator
+{
+    BasicResult CalculateSubTotal(decimal amount, decimal discount);
 }

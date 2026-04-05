@@ -12,11 +12,11 @@ namespace LegacyRenewalApp
     {
         public static readonly Dictionary<int, Customer> Database = new Dictionary<int, Customer>
         {
-            { 1, new Customer { Id = 1, FullName = "Anna Kowalska", Email = "anna.kowalska@example.com", Segment = new NoDiscount(), Country = "Poland", YearsWithCompany = 1, LoyaltyPoints = 20, IsActive = true } },
-            { 2, new Customer { Id = 2, FullName = "Piotr Lis", Email = "piotr.lis@example.com", Segment = new GoldenDiscount(), Country = "Poland", YearsWithCompany = 4, LoyaltyPoints = 140, IsActive = true } },
-            { 3, new Customer { Id = 3, FullName = "John Smith", Email = "john.smith@example.com", Segment = new PlatinumDiscount(), Country = "Germany", YearsWithCompany = 7, LoyaltyPoints = 260, IsActive = true } },
-            { 4, new Customer { Id = 4, FullName = "School Lab", Email = "it-admin@school.example.com", Segment = new EducationDiscount(), Country = "Czech Republic", YearsWithCompany = 3, LoyaltyPoints = 90, IsActive = true } },
-            { 5, new Customer { Id = 5, FullName = "Nordic Ventures", Email = "finance@nordic.example.com", Segment = new SilverDiscount(), Country = "Norway", YearsWithCompany = 2, LoyaltyPoints = 30, IsActive = true } }
+            { 1, new Customer { Id = 1, FullName = "Anna Kowalska", Email = "anna.kowalska@example.com", Segment = new NoDiscount(), Country = new Poland(), YearsWithCompany = 1, LoyaltyPoints = 20, IsActive = true } },
+            { 2, new Customer { Id = 2, FullName = "Piotr Lis", Email = "piotr.lis@example.com", Segment = new GoldenDiscount(), Country = new Poland(), YearsWithCompany = 4, LoyaltyPoints = 140, IsActive = true } },
+            { 3, new Customer { Id = 3, FullName = "John Smith", Email = "john.smith@example.com", Segment = new PlatinumDiscount(), Country = new Germany(), YearsWithCompany = 7, LoyaltyPoints = 260, IsActive = true } },
+            { 4, new Customer { Id = 4, FullName = "School Lab", Email = "it-admin@school.example.com", Segment = new EducationDiscount(), Country = new Czech(), YearsWithCompany = 3, LoyaltyPoints = 90, IsActive = true } },
+            { 5, new Customer { Id = 5, FullName = "Nordic Ventures", Email = "finance@nordic.example.com", Segment = new SilverDiscount(), Country = new Norway(), YearsWithCompany = 2, LoyaltyPoints = 30, IsActive = true } }
         };
 
         public Customer GetById(int customerId)
