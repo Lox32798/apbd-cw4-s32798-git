@@ -11,6 +11,8 @@ namespace LegacyRenewalApp
         private readonly INormalizedFeeCalculator _feeCalculator;
         private readonly IPaymentMatcher _paymentMatcher;
         private readonly ITaxCalculator _taxCalculator;
+        private readonly IValidator _validator;
+        private readonly IBillingGateway _billingGateway;
         public SubscriptionRenewalService()
         {
             _customerRepository =  new CustomerRepository();
@@ -19,6 +21,8 @@ namespace LegacyRenewalApp
             _feeCalculator = new NormalizedFeeCalculator();
             _paymentMatcher =  new PaymentMatcher();
             _taxCalculator = new TaxCalculator();
+            _validator =  new Validator();
+            _billingGateway = new LegacyBillingGatewayAdapter();
         }
         public RenewalInvoice CreateRenewalInvoice(
             int customerId,
@@ -28,7 +32,7 @@ namespace LegacyRenewalApp
             bool includePremiumSupport,
             bool useLoyaltyPoints)
         {
-            ValidateData(customerId, planCode, seatCount, paymentMethod);
+            _validator.Validate(customerId, planCode, seatCount, paymentMethod);
             
             string normalizedPlanCode = planCode.Trim().ToUpperInvariant();
             string normalizedPaymentMethod = paymentMethod.Trim().ToUpperInvariant();
@@ -36,11 +40,8 @@ namespace LegacyRenewalApp
             var customer = _customerRepository.GetById(customerId);
             var plan = _subscriptionPlanRepository.GetByCode(normalizedPlanCode);
 
-            if (!customer.IsActive)
-            {
-                throw new InvalidOperationException("Inactive customers cannot renew subscriptions");
-            }
-
+            _validator.ValidateCustomer(customer);
+            
             decimal baseAmount = (plan.MonthlyPricePerSeat * seatCount * 12m) + plan.SetupFee;
 
             string notes = string.Empty;
@@ -97,7 +98,7 @@ namespace LegacyRenewalApp
                 GeneratedAt = DateTime.UtcNow
             };
 
-            LegacyBillingGateway.SaveInvoice(invoice);
+            _billingGateway.SaveInvoice(invoice);
 
             if (!string.IsNullOrWhiteSpace(customer.Email))
             {
@@ -106,36 +107,10 @@ namespace LegacyRenewalApp
                     $"Hello {customer.FullName}, your renewal for plan {normalizedPlanCode} " +
                     $"has been prepared. Final amount: {invoice.FinalAmount:F2}.";
 
-                LegacyBillingGateway.SendEmail(customer.Email, subject, body);
+                _billingGateway.SendEmail(customer.Email, subject, body);
             }
 
             return invoice;
-        }
-
-        private void ValidateData(
-            int customerId,
-            string planCode,
-            int seatCount,
-            string paymentMethod){
-            if (customerId <= 0)
-            {
-                throw new ArgumentException("Customer id must be positive");
-            }
-
-            if (string.IsNullOrWhiteSpace(planCode))
-            {
-                throw new ArgumentException("Plan code is required");
-            }
-
-            if (seatCount <= 0)
-            {
-                throw new ArgumentException("Seat count must be positive");
-            }
-
-            if (string.IsNullOrWhiteSpace(paymentMethod))
-            {
-                throw new ArgumentException("Payment method is required");
-            }
         }
     }
 }
